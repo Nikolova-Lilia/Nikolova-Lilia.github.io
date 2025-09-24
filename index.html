@@ -21,12 +21,12 @@
     <section class="showcase">
       <div class="copy">
         <h2>Interactive 3D Preview</h2>
-        <p>Hover and move your mouse to rotate the forest‑green cube. This is your Three.js demo embedded directly inside the card.</p>
+        <p>Hover / drag to rotate the cube. I reduced the text size and expanded the canvas so the 3D demo is the star of the page.</p>
         <p><small>Built with Three.js.</small></p>
       </div>
       <div class="canvas-wrap">
         <div id="cube-app" class="cube-app" aria-label="3D scene" tabindex="0"></div>
-        <div class="hint">Hover & move to rotate</div>
+        <div class="hint">Drag to rotate • Pinch/scroll to zoom</div>
       </div>
     </section>
 
@@ -57,17 +57,12 @@
     <small>© <span id="year"></span> Lilia Nikolova</small>
   </footer>
 
-  <!-- Use your module-based Three.js cube, adapted to fit inside #cube-app -->
   <script type="module">
     import * as THREE from 'https://unpkg.com/three@0.159.0/build/three.module.js';
 
-    // Container inside the card
     const app = document.getElementById('cube-app');
 
     const scene = new THREE.Scene();
-    // A soft background; card provides light gray; keep scene transparent
-    // scene.background = new THREE.Color(0xf8f8f8);
-
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
     camera.position.set(0, 1.2, 5);
 
@@ -76,76 +71,62 @@
     renderer.shadowMap.enabled = true;
     app.appendChild(renderer.domElement);
 
-    // --- lighting ---
     scene.add(new THREE.AmbientLight(0xffffff, 0.35));
     const key = new THREE.DirectionalLight(0xffffff, 1.0);
     key.position.set(3, 5, 4);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     scene.add(key);
-
     const rim = new THREE.DirectionalLight(0x88ff88, 0.25);
     rim.position.set(-3, 2, -4);
     scene.add(rim);
 
-    // --- floor for soft shadow ---
-    const floorGeo = new THREE.PlaneGeometry(50, 50);
-    const floorMat = new THREE.ShadowMaterial({ opacity: 0.18 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(50, 50),
+      new THREE.ShadowMaterial({ opacity: 0.18 })
+    );
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -1.2;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // --- the cube (forest dark green) ---
-    const cubeGeo = new THREE.BoxGeometry(2, 2, 2);
-    const cubeMat = new THREE.MeshStandardMaterial({
-      color: 0x0b3d0b, // forest dark green
-      roughness: 0.6,
-      metalness: 0.05,
-      envMapIntensity: 0.6,
-    });
-    const cube = new THREE.Mesh(cubeGeo, cubeMat);
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 2, 2),
+      new THREE.MeshStandardMaterial({ color: 0x0b3d0b, roughness: 0.6, metalness: 0.05 })
+    );
     cube.castShadow = true;
     scene.add(cube);
 
-    // --- small environment boxes (optional subtle reflections) ---
-    const group = new THREE.Group();
-    for (let i = 0; i < 9; i++) {
-      const g = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-      const m = new THREE.MeshStandardMaterial({ color: 0x163b16, roughness: 0.9, metalness: 0.0 });
-      const s = new THREE.Mesh(g, m);
-      s.position.set((Math.random()-0.5)*10, Math.random()*2-0.5, (Math.random()-0.5)*10);
-      s.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
-      group.add(s);
+    // Pointer rotate + inertia
+    let dragging = false, prevX = 0, prevY = 0, vx = 0, vy = 0;
+    function onPointerDown(e){ dragging = true; const p = e.touches ? e.touches[0] : e; prevX = p.clientX; prevY = p.clientY; app.style.cursor='grabbing'; }
+    function onPointerUp(){ dragging = false; app.style.cursor='grab'; }
+    function onPointerMove(e){
+      const p = e.touches ? e.touches[0] : e;
+      if (!dragging){ prevX = p.clientX; prevY = p.clientY; return; }
+      vx = (p.clientX - prevX) * 0.003;
+      vy = (p.clientY - prevY) * 0.003;
+      prevX = p.clientX; prevY = p.clientY;
     }
-    scene.add(group);
+    app.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('mousemove', onPointerMove);
+    app.addEventListener('touchstart', onPointerDown, {passive:true});
+    window.addEventListener('touchend', onPointerUp, {passive:true});
+    window.addEventListener('touchmove', onPointerMove, {passive:true});
 
-    // --- interaction & inertia ---
-    let hovering = false;
-    let prev = { x: 0, y: 0 };
-    let velocity = { x: 0, y: 0 };
+    // Zoom (wheel/pinch)
+    function onWheel(e){
+      e.preventDefault();
+      camera.position.z = Math.min(10, Math.max(2.5, camera.position.z + (e.deltaY>0 ? 0.3 : -0.3)));
+    }
+    app.addEventListener('wheel', onWheel, {passive:false});
 
-    app.addEventListener('mouseenter', () => { hovering = true; app.style.cursor = 'grab'; });
-    app.addEventListener('mouseleave', () => { hovering = false; app.style.cursor = 'default'; });
-    app.addEventListener('mousemove', (e) => {
-      if (!hovering) return;
-      const rect = app.getBoundingClientRect();
-      const dx = e.clientX - prev.x;
-      const dy = e.clientY - prev.y;
-      velocity.x = THREE.MathUtils.clamp(dx * 0.002, -0.05, 0.05);
-      velocity.y = THREE.MathUtils.clamp(dy * 0.002, -0.05, 0.05);
-      prev.x = e.clientX; prev.y = e.clientY;
-    }, { passive: true });
-
-    window.addEventListener('mousemove', (e) => { prev.x = e.clientX; prev.y = e.clientY; }, { passive: true });
-
-    // --- fit to container ---
     function resize(){
-      const w = app.clientWidth || 600;
-      const h = app.clientHeight || 400;
+      const w = app.clientWidth || 700;
+      const h = app.clientHeight || 520;
       renderer.setSize(w, h, false);
-      camera.aspect = w / h;
+      camera.aspect = w/h;
       camera.updateProjectionMatrix();
     }
     const ro = new ResizeObserver(resize);
@@ -153,19 +134,10 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // --- animate ---
-    const clock = new THREE.Clock();
     function animate(){
       requestAnimationFrame(animate);
-      cube.rotation.y += velocity.x;
-      cube.rotation.x += velocity.y;
-      velocity.x *= 0.92;
-      velocity.y *= 0.92;
-      const t = clock.getElapsedTime();
-      if (!hovering) {
-        cube.rotation.y += 0.0015;
-        cube.rotation.x += Math.sin(t * 0.6) * 0.0004;
-      }
+      cube.rotation.y += vx; cube.rotation.x += vy;
+      vx *= 0.93; vy *= 0.93;
       renderer.render(scene, camera);
     }
     animate();

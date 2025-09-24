@@ -21,7 +21,7 @@
     <section class="showcase">
       <div class="copy">
         <h2>Interactive 3D Preview</h2>
-        <p>Hover / drag to rotate the cube. I reduced the text size and expanded the canvas so the 3D demo is the star of the page.</p>
+        <p>Drag to rotate, scroll/pinch to zoom. I’ve fixed the desktop overflow and kept a big canvas. On mobile, the canvas comes first and fills the screen nicely.</p>
         <p><small>Built with Three.js.</small></p>
       </div>
       <div class="canvas-wrap">
@@ -122,17 +122,17 @@
     }
     app.addEventListener('wheel', onWheel, {passive:false});
 
-    function resize(){
-      const w = app.clientWidth || 700;
-      const h = app.clientHeight || 520;
+    // --- Robust sizing without ResizeObserver loops ---
+    function sizeToContainer(){
+      const rect = app.getBoundingClientRect();
+      const w = Math.max(1, Math.floor(rect.width));
+      const h = Math.max(1, Math.floor(rect.height));
       renderer.setSize(w, h, false);
-      camera.aspect = w/h;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
     }
-    const ro = new ResizeObserver(resize);
-    ro.observe(app);
-    window.addEventListener('resize', resize);
-    resize();
+    sizeToContainer();
+    window.addEventListener('resize', () => { sizeToContainer(); });
 
     function animate(){
       requestAnimationFrame(animate);

@@ -1,0 +1,10 @@
+/ (project root)
+├─ index.html
+├─ style.css                ← your existing CSS (with a small addition below)
+├─ /media/                  ← put preview clips/posters here
+│   ├─ docker-preview.mp4
+│   ├─ exam-training-preview.mp4
+│   └─ ... (more)
+└─ /js/
+   ├─ scene.js              ← Three.js 3D cube code
+   └─ cards.js              ← hover video previews for project cards
